@@ -1,7 +1,9 @@
 from .base import BuildTool
+from .bun import BunTool
 from .uv import UvTool
 
 TOOLS: dict[str, type[BuildTool]] = {
+    "bun": BunTool,
     "uv": UvTool,
 }
 
