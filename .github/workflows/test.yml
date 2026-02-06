@@ -25,4 +25,6 @@ jobs:
 
       - uses: astral-sh/setup-uv@v5
 
+      - uses: oven-sh/setup-bun@v2
+
       - run: bash scripts/integration_test.sh
