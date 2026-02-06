@@ -87,19 +87,25 @@ class BunTool(BuildTool):
         import json
         data = json.loads(package_json_path.read_text())
 
+        changed = False
+
         if "devDependencies" not in data:
             data["devDependencies"] = {}
 
-        if "@types/bun" in data.get("devDependencies", {}):
-            return
+        if "@types/bun" not in data["devDependencies"]:
+            data["devDependencies"]["@types/bun"] = "latest"
+            changed = True
 
-        data["devDependencies"]["@types/bun"] = "latest"
-        data["scripts"] = data.get("scripts", {})
-        data["scripts"]["test"] = "bun test --coverage"
-        data["scripts"]["build"] = "bun build ./index.ts --outdir ./dist"
+        scripts = data.get("scripts", {})
+        if "test" not in scripts or "build" not in scripts:
+            scripts.setdefault("test", "bun test --coverage")
+            scripts.setdefault("build", "bun build ./index.ts --outdir ./dist")
+            data["scripts"] = scripts
+            changed = True
 
-        package_json_path.write_text(json.dumps(data, indent=2) + "\n")
-        console.print("[green]Added dev dependencies and scripts[/green]")
+        if changed:
+            package_json_path.write_text(json.dumps(data, indent=2) + "\n")
+            console.print("[green]Added dev dependencies and scripts[/green]")
 
     def _create_gitignore(self) -> None:
         gitignore_content = """node_modules/

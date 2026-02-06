@@ -54,15 +54,19 @@ def main(ctx):
 @click.argument("name")
 @click.option("--git/--no-git", default=True, help="Initialize git repository")
 @click.option("--tool", required=True, help="Build tool to use")
-@pass_context
-def init(ctx: PkgContext, name: str, git: bool, tool: str):
-    create_pkg_config(ctx.project_dir, tool)
-    exit_code = ctx.tool.init(name=name)
+def init(name: str, git: bool, tool: str):
+    project_dir = Path.cwd() / name
+    project_dir.mkdir(parents=True, exist_ok=True)
+
+    create_pkg_config(project_dir, tool)
+
+    tool_instance = get_tool(tool)(project_dir)
+    exit_code = tool_instance.init(name=name)
     if exit_code != 0:
         sys.exit(exit_code)
 
     disabled = set() if git else {"git"}
-    exit_code = run_init_hooks(ctx.project_dir, name, disabled=disabled)
+    exit_code = run_init_hooks(project_dir, name, disabled=disabled)
     sys.exit(exit_code)
 
 

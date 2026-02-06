@@ -126,3 +126,30 @@ def test_uplift_idempotent(runner, tmp_path, mocker):
 def test_uplift_in_help(runner):
     result = runner.invoke(main, ["--help"])
     assert "uplift" in result.output
+
+
+def test_init_creates_project_directory(runner, tmp_path, mocker, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    mocker.patch("pkg.tools.uv.run_command", return_value=0)
+    result = runner.invoke(main, ["init", "my-project", "--tool", "uv"])
+    assert result.exit_code == 0
+    project_dir = tmp_path / "my-project"
+    assert project_dir.is_dir()
+    assert (project_dir / "pkg.toml").exists()
+
+
+def test_init_creates_project_directory_with_bun(runner, tmp_path, mocker, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    mocker.patch("pkg.tools.bun.run_command", return_value=0)
+    result = runner.invoke(main, ["init", "my-app", "--tool", "bun"])
+    assert result.exit_code == 0
+    project_dir = tmp_path / "my-app"
+    assert project_dir.is_dir()
+    assert (project_dir / "pkg.toml").exists()
+
+
+def test_init_tool_failure_exits(runner, tmp_path, mocker, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    mocker.patch("pkg.tools.uv.run_command", return_value=1)
+    result = runner.invoke(main, ["init", "fail-project", "--tool", "uv"])
+    assert result.exit_code != 0

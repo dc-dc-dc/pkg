@@ -139,12 +139,16 @@ def test_add_dev_dependencies(tmp_path):
 
 
 def test_add_dev_dependencies_skips_if_exists(tmp_path):
-    original = {"name": "test", "devDependencies": {"@types/bun": "latest"}}
+    original = {
+        "name": "test",
+        "devDependencies": {"@types/bun": "latest"},
+        "scripts": {"test": "bun test --coverage", "build": "bun build ./index.ts --outdir ./dist"},
+    }
     (tmp_path / "package.json").write_text(json.dumps(original, indent=2) + "\n")
     tool = BunTool(tmp_path)
     tool._add_dev_dependencies()
     data = json.loads((tmp_path / "package.json").read_text())
-    assert "scripts" not in data
+    assert data == original
 
 
 def test_add_dev_dependencies_no_package_json(tmp_path):

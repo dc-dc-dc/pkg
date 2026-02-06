@@ -11,15 +11,23 @@ echo "==> Installing pkg from source for $REPO_ROOT"
 uv tool install --force "$REPO_ROOT"
 
 echo "==> Creating test project"
-PROJECT_DIR="$WORK_DIR/testproject"
-mkdir -p "$PROJECT_DIR"
-cd "$PROJECT_DIR"
+cd "$WORK_DIR"
+pkg init testproject --tool bun --no-git
 
-pkg init testproject --tool uv --no-git
+PROJECT_DIR="$WORK_DIR/testproject"
+cd "$PROJECT_DIR"
 
 echo "==> Adding minimal test"
 mkdir -p tests
-printf 'def test_smoke():\n    assert True\n' > tests/test_smoke.py
+cat > tests/main.test.ts << 'PYEOF'
+import { test, expect, describe } from "bun:test";
+
+describe("main operations", () => {
+  test("testing console", () => {
+  });
+});
+
+PYEOF
 
 echo "==> Installing project dependencies"
 pkg install
