@@ -16,6 +16,8 @@ CLEAN_PATTERNS = [
     ".pytest_cache",
     ".ruff_cache",
     ".mypy_cache",
+    ".coverage",
+    "htmlcov",
     "build",
 ]
 
@@ -30,22 +32,22 @@ class UvTool(BuildTool):
         if code != 0:
             return code
 
-        if git and not (self.project_dir / ".git").exists():
-            code = run_command(["git", "init"], cwd=self.project_dir)
-            if code != 0:
-                return code
-            self._create_gitignore()
-
+        self._add_dev_dependencies()
+        self._create_gitignore()
         return 0
 
     def build(self) -> int:
+        test_result = self.test()
+        if test_result != 0:
+            console.print("[red]Build aborted: tests failed[/red]")
+            return test_result
         return run_command(["uv", "build"], cwd=self.project_dir)
 
     def test(self) -> int:
         return run_command(["uv", "run", "pytest"], cwd=self.project_dir)
 
     def install(self) -> int:
-        return run_command(["uv", "sync"], cwd=self.project_dir)
+        return run_command(["uv", "sync", "--group", "dev"], cwd=self.project_dir)
 
     def run(self, script: str, args: list[str] | None = None) -> int:
         cmd = ["uv", "run", script]
@@ -79,6 +81,26 @@ class UvTool(BuildTool):
         else:
             path.unlink()
 
+    def _add_dev_dependencies(self) -> None:
+        pyproject_path = self.project_dir / "pyproject.toml"
+        if not pyproject_path.exists():
+            return
+
+        content = pyproject_path.read_text()
+        if "[dependency-groups]" in content:
+            return
+
+        dev_config = """
+[dependency-groups]
+dev = ["pytest>=8.0.0", "pytest-mock>=3.12.0", "pytest-cov>=4.1.0"]
+
+[tool.pytest.ini_options]
+addopts = "--cov=. --cov-report=term-missing --cov-report=html --cov-fail-under=90"
+"""
+        content += dev_config
+        pyproject_path.write_text(content)
+        console.print("[green]Added dev dependencies and pytest config[/green]")
+
     def _create_gitignore(self) -> None:
         gitignore_content = """.venv/
 dist/
@@ -87,6 +109,8 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/
+.coverage
+htmlcov/
 build/
 *.pyc
 .env

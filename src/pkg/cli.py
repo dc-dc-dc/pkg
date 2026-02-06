@@ -61,12 +61,8 @@ def init(ctx: PkgContext, name: str, git: bool, tool: str):
     if exit_code != 0:
         sys.exit(exit_code)
 
-    if git:
-        exit_code = setup_git(ctx.project_dir)
-        if exit_code != 0:
-            sys.exit(exit_code)
-
-    exit_code = setup_agent_md(ctx.project_dir, name)
+    disabled = set() if git else {"git"}
+    exit_code = run_init_hooks(ctx.project_dir, name, disabled=disabled)
     sys.exit(exit_code)
 
 
