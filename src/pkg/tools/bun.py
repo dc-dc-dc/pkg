@@ -68,6 +68,11 @@ class BunTool(BuildTool):
 
         return 0
 
+    def uplift(self) -> int:
+        self._add_dev_dependencies()
+        self._create_gitignore()
+        return 0
+
     def _remove_path(self, path: Path) -> None:
         if path.is_dir():
             shutil.rmtree(path)

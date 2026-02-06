@@ -145,3 +145,22 @@ def test_add_dev_dependencies_no_pyproject(tmp_path):
 def test_clean_patterns_include_coverage():
     assert "htmlcov" in CLEAN_PATTERNS
     assert ".coverage" in CLEAN_PATTERNS
+
+
+def test_uv_tool_uplift(tmp_path):
+    (tmp_path / "pyproject.toml").write_text('[project]\nname = "test"\n')
+    tool = UvTool(tmp_path)
+    result = tool.uplift()
+    assert result == 0
+    assert (tmp_path / ".gitignore").exists()
+    content = (tmp_path / "pyproject.toml").read_text()
+    assert "[dependency-groups]" in content
+
+
+def test_uv_tool_uplift_idempotent(tmp_path):
+    (tmp_path / "pyproject.toml").write_text('[project]\nname = "test"\n')
+    (tmp_path / ".gitignore").write_text("existing")
+    tool = UvTool(tmp_path)
+    tool.uplift()
+    tool.uplift()
+    assert (tmp_path / ".gitignore").read_text() == "existing"

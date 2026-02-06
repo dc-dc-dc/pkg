@@ -106,5 +106,21 @@ def run(ctx: PkgContext, script: str, args: tuple):
     sys.exit(exit_code)
 
 
+@main.command()
+@pass_context
+def uplift(ctx: PkgContext):
+    """Update the current project to support pkg commands."""
+    name = ctx.project_dir.name
+
+    create_pkg_config(ctx.project_dir, ctx.config.tool)
+
+    exit_code = ctx.tool.uplift()
+    if exit_code != 0:
+        sys.exit(exit_code)
+
+    exit_code = run_init_hooks(ctx.project_dir, name)
+    sys.exit(exit_code)
+
+
 if __name__ == "__main__":
     main()

@@ -34,3 +34,7 @@ class BuildTool(ABC):
     @abstractmethod
     def clean(self) -> int:
         ...
+
+    @abstractmethod
+    def uplift(self) -> int:
+        ...

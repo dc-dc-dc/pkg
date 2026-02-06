@@ -95,3 +95,34 @@ def test_run_command(runner, tmp_path, mocker):
     (tmp_path / "pkg.toml").write_text('[pkg]\ntool = "uv"')
     result = runner.invoke(main, ["run", "echo", "hello"])
     assert result.exit_code == 0
+
+
+def test_uplift_command(runner, tmp_path, mocker):
+    mocker.patch("pkg.cli.find_project_root", return_value=tmp_path)
+    (tmp_path / "pkg.toml").write_text('[pkg]\ntool = "uv"')
+    result = runner.invoke(main, ["uplift"])
+    assert result.exit_code == 0
+
+
+def test_uplift_creates_pkg_toml(runner, tmp_path, mocker):
+    mocker.patch("pkg.cli.find_project_root", return_value=tmp_path)
+    result = runner.invoke(main, ["uplift"])
+    assert result.exit_code == 0
+    assert (tmp_path / "pkg.toml").exists()
+
+
+def test_uplift_idempotent(runner, tmp_path, mocker):
+    mocker.patch("pkg.cli.find_project_root", return_value=tmp_path)
+    (tmp_path / "pkg.toml").write_text('[pkg]\ntool = "uv"')
+    (tmp_path / ".gitignore").write_text("existing")
+    (tmp_path / "AGENT.md").write_text("existing")
+    (tmp_path / ".git").mkdir()
+    result = runner.invoke(main, ["uplift"])
+    assert result.exit_code == 0
+    assert (tmp_path / ".gitignore").read_text() == "existing"
+    assert (tmp_path / "AGENT.md").read_text() == "existing"
+
+
+def test_uplift_in_help(runner):
+    result = runner.invoke(main, ["--help"])
+    assert "uplift" in result.output
