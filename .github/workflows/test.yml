@@ -16,3 +16,13 @@ jobs:
       - run: uv sync --dev
 
       - run: uv run pytest
+
+  integration:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+
+      - run: bash scripts/integration_test.sh
