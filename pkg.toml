@@ -1,0 +1,21 @@
+[pkg]
+tool = "uv"
+
+[hooks.build]
+pre = ["echo 'Starting build...'"]
+post = ["echo 'Build complete!'"]
+
+[hooks.test]
+pre = ["echo 'Running tests...'"]
+post = []
+
+[hooks.install]
+pre = []
+post = ["echo 'Dependencies installed!'"]
+
+[hooks.clean]
+pre = []
+post = ["echo 'Cleaned up!'"]
+
+[plugins]
+enabled = []
