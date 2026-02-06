@@ -12,7 +12,7 @@ class BuildTool(ABC):
         ...
 
     @abstractmethod
-    def init(self, git: bool = True) -> int:
+    def init(self, name: str | None = None, git: bool = True) -> int:
         ...
 
     @abstractmethod

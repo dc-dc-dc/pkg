@@ -7,8 +7,8 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 WORK_DIR=$(mktemp -d)
 trap "rm -rf $WORK_DIR" EXIT
 
-echo "==> Installing pkg from source"
-uv tool install "$REPO_ROOT"
+echo "==> Installing pkg from source for $REPO_ROOT"
+uv tool install --force "$REPO_ROOT"
 
 echo "==> Creating test project"
 PROJECT_DIR="$WORK_DIR/testproject"

@@ -25,7 +25,7 @@ class BunTool(BuildTool):
     def name(self) -> str:
         return "bun"
 
-    def init(self, git: bool = True) -> int:
+    def init(self, name: str | None = None, git: bool = True) -> int:
         code = run_command(["bun", "init", "-y"], cwd=self.project_dir)
         if code != 0:
             return code
