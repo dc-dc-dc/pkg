@@ -26,16 +26,16 @@ def test_agent_md_hook_creates_file(tmp_path):
     assert hook.enabled_by_default is True
     result = hook.run(tmp_path, "myproject")
     assert result == 0
-    content = (tmp_path / "AGENT.md").read_text()
+    content = (tmp_path / "AGENTS.md").read_text()
     assert "# myproject" in content
 
 
 def test_agent_md_hook_skips_existing(tmp_path):
-    (tmp_path / "AGENT.md").write_text("existing")
+    (tmp_path / "AGENTS.md").write_text("existing")
     hook = AgentMdHook()
     result = hook.run(tmp_path, "test")
     assert result == 0
-    assert (tmp_path / "AGENT.md").read_text() == "existing"
+    assert (tmp_path / "AGENTS.md").read_text() == "existing"
 
 
 def test_run_init_hooks_with_disabled(tmp_path):

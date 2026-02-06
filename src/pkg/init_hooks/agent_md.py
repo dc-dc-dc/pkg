@@ -8,8 +8,8 @@ class AgentMdHook:
     enabled_by_default = True
 
     def run(self, project_dir: Path, name: str) -> int:
-        """Create an AGENT.md file in the project directory."""
-        agent_md_path = project_dir / "AGENT.md"
+        """Create an AGENTS.md file in the project directory."""
+        agent_md_path = project_dir / "AGENTS.md"
 
         if agent_md_path.exists():
             return 0
