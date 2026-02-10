@@ -37,11 +37,10 @@ class UvTool(BuildTool):
         return 0
 
     def build(self) -> int:
-        test_result = self.test()
-        if test_result != 0:
-            console.print("[red]Build aborted: tests failed[/red]")
-            return test_result
-        return run_command(["uv", "build"], cwd=self.project_dir)
+        code = run_command(["uv", "build"], cwd=self.project_dir)
+        if code != 0:
+            return code
+        return self.test()
 
     def test(self) -> int:
         return run_command(["uv", "run", "pytest"], cwd=self.project_dir)
@@ -117,6 +116,7 @@ __pycache__/
 .coverage
 htmlcov/
 build/
+
 *.pyc
 .env
 .env.*

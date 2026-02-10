@@ -56,10 +56,10 @@ def test_build_runs_tests_first(tmp_path, mocker):
 def test_build_aborts_on_test_failure(tmp_path, mocker):
     tool = UvTool(tmp_path)
     mocker.patch.object(tool, "test", return_value=1)
-    mock_run = mocker.patch("pkg.tools.uv.run_command")
+    mock_run = mocker.patch("pkg.tools.uv.run_command", return_value=0)
     result = tool.build()
     assert result == 1
-    mock_run.assert_not_called()
+    mock_run.assert_called_once()
 
 
 def test_uv_tool_test(tmp_path, mocker):
