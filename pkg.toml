@@ -2,6 +2,7 @@
 tool = "uv"
 
 [hooks.build]
+pre = ["uv tool uninstall pkg" ]
 post = [
     "uv tool install .",
 ]

@@ -56,6 +56,8 @@ enabled = []
 
 ## Supported Tools
 
+- `bash` - Bash script projects (scripts in `src/`, tests in `tests/`, installs to `~/bin`)
+- `bun` - Fast JavaScript/TypeScript runtime and bundler
 - `uv` - Fast Python package installer and resolver
 
 ## Hooks
