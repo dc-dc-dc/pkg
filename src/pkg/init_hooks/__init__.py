@@ -42,4 +42,4 @@ def run_init_hooks(project_dir: Path, name: str, disabled: set[str] | None = Non
 
 
 # Import hooks to trigger registration
-from . import git, agent_md  # noqa: E402, F401
+from . import git, agent_md, readme  # noqa: E402, F401

@@ -2,6 +2,7 @@ import pytest
 from pkg.init_hooks import register, run_init_hooks, _hooks
 from pkg.init_hooks.git import GitHook
 from pkg.init_hooks.agent_md import AgentMdHook
+from pkg.init_hooks.readme import ReadmeHook
 
 
 def test_git_hook_creates_repo(tmp_path):
@@ -36,6 +37,27 @@ def test_agent_md_hook_skips_existing(tmp_path):
     result = hook.run(tmp_path, "test")
     assert result == 0
     assert (tmp_path / "AGENTS.md").read_text() == "existing"
+
+
+def test_readme_hook_creates_file(tmp_path):
+    hook = ReadmeHook()
+    assert hook.name == "readme"
+    assert hook.enabled_by_default is True
+    result = hook.run(tmp_path, "myproject")
+    assert result == 0
+    content = (tmp_path / "README.md").read_text()
+    assert "# myproject" in content
+    assert "pkg install" in content
+    assert "pkg build" in content
+    assert "pkg test" in content
+
+
+def test_readme_hook_skips_existing(tmp_path):
+    (tmp_path / "README.md").write_text("existing")
+    hook = ReadmeHook()
+    result = hook.run(tmp_path, "test")
+    assert result == 0
+    assert (tmp_path / "README.md").read_text() == "existing"
 
 
 def test_run_init_hooks_with_disabled(tmp_path):
