@@ -1,0 +1,17 @@
+[pkg]
+tool = "go"
+
+[hooks.build]
+pre = []
+post = []
+
+[hooks.test]
+pre = []
+post = []
+
+[hooks.install]
+pre = []
+post = []
+
+[plugins]
+enabled = []

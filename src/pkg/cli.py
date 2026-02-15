@@ -10,7 +10,7 @@ from .hooks import run_pre_hooks, run_post_hooks
 from .init import create_pkg_config
 from .init_hooks import run_init_hooks
 from .plugins import PluginManager
-from .tools import get_tool
+from .tools import get_tool, TOOLS
 
 console = Console()
 
@@ -53,7 +53,7 @@ def main(ctx):
 @main.command()
 @click.argument("name")
 @click.option("--git/--no-git", default=True, help="Initialize git repository")
-@click.option("--tool", required=True, help="Build tool to use")
+@click.option("--tool", required=True, type=click.Choice(TOOLS.keys()), help="Build tool to use")
 def init(name: str, git: bool, tool: str):
     project_dir = Path.cwd() / name
     project_dir.mkdir(parents=True, exist_ok=True)

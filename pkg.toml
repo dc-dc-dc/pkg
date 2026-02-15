@@ -2,10 +2,7 @@
 tool = "uv"
 
 [hooks.build]
-pre = ["uv tool uninstall pkg" ]
+pre = ["uv tool uninstall pkg", "uv cache clean" ]
 post = [
     "uv tool install .",
 ]
-
-[plugins]
-enabled = []

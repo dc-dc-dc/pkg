@@ -1,11 +1,13 @@
 from .base import BuildTool
 from .bash import BashTool
 from .bun import BunTool
+from .go import GoTool
 from .uv import UvTool
 
 TOOLS: dict[str, type[BuildTool]] = {
     "bash": BashTool,
     "bun": BunTool,
+    "go": GoTool,
     "uv": UvTool,
 }
 
