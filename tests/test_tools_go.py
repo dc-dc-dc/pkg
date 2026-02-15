@@ -14,8 +14,7 @@ def test_go_tool_project_dir(tmp_path):
 
 
 def test_clean_patterns_exist():
-    assert "bin" in CLEAN_PATTERNS
-    assert "dist" in CLEAN_PATTERNS
+    assert "build" in CLEAN_PATTERNS
     assert "vendor" in CLEAN_PATTERNS
     assert "coverage.out" in CLEAN_PATTERNS
     assert "*.test" in CLEAN_PATTERNS
@@ -27,15 +26,13 @@ def test_go_tool_clean_empty_dir(tmp_path):
     assert result == 0
 
 
-def test_go_tool_clean_removes_dirs(tmp_path):
-    (tmp_path / "bin").mkdir()
-    (tmp_path / "dist").mkdir()
+def test_go_tool_clean_removes_build_dir(tmp_path):
+    (tmp_path / "build").mkdir()
     (tmp_path / "vendor").mkdir()
     tool = GoTool(tmp_path)
     result = tool.clean()
     assert result == 0
-    assert not (tmp_path / "bin").exists()
-    assert not (tmp_path / "dist").exists()
+    assert not (tmp_path / "build").exists()
     assert not (tmp_path / "vendor").exists()
 
 
@@ -61,7 +58,7 @@ def test_go_tool_create_gitignore(tmp_path):
     gitignore = tmp_path / ".gitignore"
     assert gitignore.exists()
     content = gitignore.read_text()
-    assert "bin/" in content
+    assert "build/" in content
     assert "vendor/" in content
     assert "coverage.out" in content
     assert "*.exe" in content
@@ -75,10 +72,27 @@ def test_go_tool_create_gitignore_skips_existing(tmp_path):
     assert (tmp_path / ".gitignore").read_text() == "existing"
 
 
+def test_go_tool_create_dirs(tmp_path):
+    tool = GoTool(tmp_path)
+    tool._create_dirs()
+    assert (tmp_path / "cmd").is_dir()
+    assert (tmp_path / "pkg").is_dir()
+    assert (tmp_path / "internal").is_dir()
+    assert (tmp_path / "scripts").is_dir()
+
+
+def test_go_tool_create_dirs_idempotent(tmp_path):
+    tool = GoTool(tmp_path)
+    tool._create_dirs()
+    tool._create_dirs()
+    assert (tmp_path / "cmd").is_dir()
+
+
 def test_go_tool_create_main_go(tmp_path):
+    (tmp_path / "cmd").mkdir()
     tool = GoTool(tmp_path)
     tool._create_main_go()
-    main_go = tmp_path / "main.go"
+    main_go = tmp_path / "cmd" / "main.go"
     assert main_go.exists()
     content = main_go.read_text()
     assert "package main" in content
@@ -86,10 +100,11 @@ def test_go_tool_create_main_go(tmp_path):
 
 
 def test_go_tool_create_main_go_skips_existing(tmp_path):
-    (tmp_path / "main.go").write_text("existing")
+    (tmp_path / "cmd").mkdir()
+    (tmp_path / "cmd" / "main.go").write_text("existing")
     tool = GoTool(tmp_path)
     tool._create_main_go()
-    assert (tmp_path / "main.go").read_text() == "existing"
+    assert (tmp_path / "cmd" / "main.go").read_text() == "existing"
 
 
 def test_build_runs_tests_first(tmp_path, mocker):
@@ -98,6 +113,26 @@ def test_build_runs_tests_first(tmp_path, mocker):
     mocker.patch("pkg.tools.go.run_command", return_value=0)
     tool.build()
     mock_test.assert_called_once()
+
+
+def test_build_creates_build_dir(tmp_path, mocker):
+    tool = GoTool(tmp_path)
+    mocker.patch.object(tool, "test", return_value=0)
+    mocker.patch("pkg.tools.go.run_command", return_value=0)
+    tool.build()
+    assert (tmp_path / "build").is_dir()
+
+
+def test_build_outputs_to_build_dir(tmp_path, mocker):
+    tool = GoTool(tmp_path)
+    mocker.patch.object(tool, "test", return_value=0)
+    mock_run = mocker.patch("pkg.tools.go.run_command", return_value=0)
+    tool.build()
+    expected_output = str(tmp_path / "build" / tmp_path.name)
+    mock_run.assert_called_once_with(
+        ["go", "build", "-o", expected_output, "./cmd/..."],
+        cwd=tmp_path,
+    )
 
 
 def test_build_aborts_on_test_failure(tmp_path, mocker):
@@ -147,8 +182,12 @@ def test_go_tool_init(tmp_path, mocker):
     result = tool.init(name="myproject")
     assert result == 0
     mock_run.assert_called_once_with(["go", "mod", "init", "myproject"], cwd=tmp_path)
-    assert (tmp_path / "main.go").exists()
+    assert (tmp_path / "cmd" / "main.go").exists()
     assert (tmp_path / ".gitignore").exists()
+    assert (tmp_path / "cmd").is_dir()
+    assert (tmp_path / "pkg").is_dir()
+    assert (tmp_path / "internal").is_dir()
+    assert (tmp_path / "scripts").is_dir()
 
 
 def test_go_tool_init_uses_dir_name_when_no_name(tmp_path, mocker):
@@ -170,6 +209,10 @@ def test_go_tool_uplift(tmp_path):
     result = tool.uplift()
     assert result == 0
     assert (tmp_path / ".gitignore").exists()
+    assert (tmp_path / "cmd").is_dir()
+    assert (tmp_path / "pkg").is_dir()
+    assert (tmp_path / "internal").is_dir()
+    assert (tmp_path / "scripts").is_dir()
 
 
 def test_go_tool_uplift_idempotent(tmp_path):

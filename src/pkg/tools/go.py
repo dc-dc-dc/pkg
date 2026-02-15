@@ -9,8 +9,7 @@ from ..runner import run_command
 console = Console()
 
 CLEAN_PATTERNS = [
-    "bin",
-    "dist",
+    "build",
     "vendor",
     "coverage.out",
     "*.test",
@@ -28,6 +27,7 @@ class GoTool(BuildTool):
         if code != 0:
             return code
 
+        self._create_dirs()
         self._create_main_go()
         self._create_gitignore()
         return 0
@@ -37,7 +37,15 @@ class GoTool(BuildTool):
         if test_result != 0:
             console.print("[red]Build aborted: tests failed[/red]")
             return test_result
-        return run_command(["go", "build", "./..."], cwd=self.project_dir)
+
+        build_dir = self.project_dir / "build"
+        build_dir.mkdir(exist_ok=True)
+
+        output = build_dir / self.project_dir.name
+        return run_command(
+            ["go", "build", "-o", str(output), "./cmd/..."],
+            cwd=self.project_dir,
+        )
 
     def test(self) -> int:
         return run_command(["go", "test", "-cover", "./..."], cwd=self.project_dir)
@@ -72,6 +80,7 @@ class GoTool(BuildTool):
         return 0
 
     def uplift(self) -> int:
+        self._create_dirs()
         self._create_gitignore()
         return 0
 
@@ -81,8 +90,14 @@ class GoTool(BuildTool):
         else:
             path.unlink()
 
+    def _create_dirs(self) -> None:
+        for dirname in ["cmd", "pkg", "internal", "scripts"]:
+            d = self.project_dir / dirname
+            d.mkdir(exist_ok=True)
+        console.print("[green]Created cmd/, pkg/, internal/, scripts/[/green]")
+
     def _create_main_go(self) -> None:
-        main_go = self.project_dir / "main.go"
+        main_go = self.project_dir / "cmd" / "main.go"
         if main_go.exists():
             return
 
@@ -94,11 +109,10 @@ func main() {
 \tfmt.Println("Hello, World!")
 }
 """)
-        console.print("[green]Created main.go[/green]")
+        console.print("[green]Created cmd/main.go[/green]")
 
     def _create_gitignore(self) -> None:
-        gitignore_content = """bin/
-dist/
+        gitignore_content = """build/
 vendor/
 coverage.out
 *.test
