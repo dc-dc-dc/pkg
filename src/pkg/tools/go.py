@@ -33,6 +33,11 @@ class GoTool(BuildTool):
         return 0
 
     def build(self) -> int:
+        vet_result = run_command(["go", "vet", "./..."], cwd=self.project_dir)
+        if vet_result != 0:
+            console.print("[red]Build aborted: vet failed[/red]")
+            return vet_result
+
         test_result = self.test()
         if test_result != 0:
             console.print("[red]Build aborted: tests failed[/red]")

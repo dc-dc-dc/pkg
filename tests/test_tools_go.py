@@ -107,11 +107,12 @@ def test_go_tool_create_main_go_skips_existing(tmp_path):
     assert (tmp_path / "cmd" / "main.go").read_text() == "existing"
 
 
-def test_build_runs_tests_first(tmp_path, mocker):
+def test_build_runs_vet_then_tests(tmp_path, mocker):
     tool = GoTool(tmp_path)
     mock_test = mocker.patch.object(tool, "test", return_value=0)
-    mocker.patch("pkg.tools.go.run_command", return_value=0)
+    mock_run = mocker.patch("pkg.tools.go.run_command", return_value=0)
     tool.build()
+    mock_run.assert_any_call(["go", "vet", "./..."], cwd=tmp_path)
     mock_test.assert_called_once()
 
 
@@ -129,19 +130,30 @@ def test_build_outputs_to_build_dir(tmp_path, mocker):
     mock_run = mocker.patch("pkg.tools.go.run_command", return_value=0)
     tool.build()
     expected_output = str(tmp_path / "build" / tmp_path.name)
-    mock_run.assert_called_once_with(
+    calls = mock_run.call_args_list
+    assert calls[0] == mocker.call(["go", "vet", "./..."], cwd=tmp_path)
+    assert calls[1] == mocker.call(
         ["go", "build", "-o", expected_output, "./cmd/..."],
         cwd=tmp_path,
     )
 
 
+def test_build_aborts_on_vet_failure(tmp_path, mocker):
+    tool = GoTool(tmp_path)
+    mock_test = mocker.patch.object(tool, "test", return_value=0)
+    mocker.patch("pkg.tools.go.run_command", return_value=1)
+    result = tool.build()
+    assert result == 1
+    mock_test.assert_not_called()
+
+
 def test_build_aborts_on_test_failure(tmp_path, mocker):
     tool = GoTool(tmp_path)
     mocker.patch.object(tool, "test", return_value=1)
-    mock_run = mocker.patch("pkg.tools.go.run_command")
+    # vet passes, but tests fail
+    mocker.patch("pkg.tools.go.run_command", return_value=0)
     result = tool.build()
     assert result == 1
-    mock_run.assert_not_called()
 
 
 def test_go_tool_test(tmp_path, mocker):
