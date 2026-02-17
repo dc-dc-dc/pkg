@@ -89,10 +89,9 @@ def test_go_tool_create_dirs_idempotent(tmp_path):
 
 
 def test_go_tool_create_main_go(tmp_path):
-    (tmp_path / "cmd").mkdir()
     tool = GoTool(tmp_path)
     tool._create_main_go()
-    main_go = tmp_path / "cmd" / "main.go"
+    main_go = tmp_path / "cmd" / tmp_path.name / "main.go"
     assert main_go.exists()
     content = main_go.read_text()
     assert "package main" in content
@@ -100,14 +99,16 @@ def test_go_tool_create_main_go(tmp_path):
 
 
 def test_go_tool_create_main_go_skips_existing(tmp_path):
-    (tmp_path / "cmd").mkdir()
-    (tmp_path / "cmd" / "main.go").write_text("existing")
+    entry_dir = tmp_path / "cmd" / tmp_path.name
+    entry_dir.mkdir(parents=True)
+    (entry_dir / "main.go").write_text("existing")
     tool = GoTool(tmp_path)
     tool._create_main_go()
-    assert (tmp_path / "cmd" / "main.go").read_text() == "existing"
+    assert (entry_dir / "main.go").read_text() == "existing"
 
 
 def test_build_runs_vet_then_tests(tmp_path, mocker):
+    (tmp_path / "cmd" / "myapp").mkdir(parents=True)
     tool = GoTool(tmp_path)
     mock_test = mocker.patch.object(tool, "test", return_value=0)
     mock_run = mocker.patch("pkg.tools.go.run_command", return_value=0)
@@ -117,6 +118,7 @@ def test_build_runs_vet_then_tests(tmp_path, mocker):
 
 
 def test_build_creates_build_dir(tmp_path, mocker):
+    (tmp_path / "cmd" / "myapp").mkdir(parents=True)
     tool = GoTool(tmp_path)
     mocker.patch.object(tool, "test", return_value=0)
     mocker.patch("pkg.tools.go.run_command", return_value=0)
@@ -124,21 +126,72 @@ def test_build_creates_build_dir(tmp_path, mocker):
     assert (tmp_path / "build").is_dir()
 
 
-def test_build_outputs_to_build_dir(tmp_path, mocker):
+def test_build_single_entrypoint(tmp_path, mocker):
+    (tmp_path / "cmd" / "myapp").mkdir(parents=True)
     tool = GoTool(tmp_path)
     mocker.patch.object(tool, "test", return_value=0)
     mock_run = mocker.patch("pkg.tools.go.run_command", return_value=0)
     tool.build()
-    expected_output = str(tmp_path / "build" / tmp_path.name)
+    expected_output = str(tmp_path / "build" / "myapp")
     calls = mock_run.call_args_list
     assert calls[0] == mocker.call(["go", "vet", "./..."], cwd=tmp_path)
     assert calls[1] == mocker.call(
-        ["go", "build", "-o", expected_output, "./cmd/..."],
+        ["go", "build", "-o", expected_output, "./cmd/myapp"],
         cwd=tmp_path,
     )
 
 
+def test_build_multiple_entrypoints(tmp_path, mocker):
+    (tmp_path / "cmd" / "api").mkdir(parents=True)
+    (tmp_path / "cmd" / "worker").mkdir(parents=True)
+    tool = GoTool(tmp_path)
+    mocker.patch.object(tool, "test", return_value=0)
+    mock_run = mocker.patch("pkg.tools.go.run_command", return_value=0)
+    result = tool.build()
+    assert result == 0
+    calls = mock_run.call_args_list
+    assert calls[0] == mocker.call(["go", "vet", "./..."], cwd=tmp_path)
+    assert calls[1] == mocker.call(
+        ["go", "build", "-o", str(tmp_path / "build" / "api"), "./cmd/api"],
+        cwd=tmp_path,
+    )
+    assert calls[2] == mocker.call(
+        ["go", "build", "-o", str(tmp_path / "build" / "worker"), "./cmd/worker"],
+        cwd=tmp_path,
+    )
+
+
+def test_build_fails_with_no_entrypoints(tmp_path, mocker):
+    (tmp_path / "cmd").mkdir()
+    tool = GoTool(tmp_path)
+    mocker.patch.object(tool, "test", return_value=0)
+    mocker.patch("pkg.tools.go.run_command", return_value=0)
+    result = tool.build()
+    assert result == 1
+
+
+def test_build_fails_without_cmd_dir(tmp_path, mocker):
+    tool = GoTool(tmp_path)
+    mocker.patch.object(tool, "test", return_value=0)
+    mocker.patch("pkg.tools.go.run_command", return_value=0)
+    result = tool.build()
+    assert result == 1
+
+
+def test_build_stops_on_first_entrypoint_failure(tmp_path, mocker):
+    (tmp_path / "cmd" / "api").mkdir(parents=True)
+    (tmp_path / "cmd" / "worker").mkdir(parents=True)
+    tool = GoTool(tmp_path)
+    mocker.patch.object(tool, "test", return_value=0)
+    # vet succeeds, first build fails
+    mock_run = mocker.patch("pkg.tools.go.run_command", side_effect=[0, 1])
+    result = tool.build()
+    assert result == 1
+    assert mock_run.call_count == 2
+
+
 def test_build_aborts_on_vet_failure(tmp_path, mocker):
+    (tmp_path / "cmd" / "myapp").mkdir(parents=True)
     tool = GoTool(tmp_path)
     mock_test = mocker.patch.object(tool, "test", return_value=0)
     mocker.patch("pkg.tools.go.run_command", return_value=1)
@@ -194,7 +247,7 @@ def test_go_tool_init(tmp_path, mocker):
     result = tool.init(name="myproject")
     assert result == 0
     mock_run.assert_called_once_with(["go", "mod", "init", "myproject"], cwd=tmp_path)
-    assert (tmp_path / "cmd" / "main.go").exists()
+    assert (tmp_path / "cmd" / tmp_path.name / "main.go").exists()
     assert (tmp_path / ".gitignore").exists()
     assert (tmp_path / "cmd").is_dir()
     assert (tmp_path / "pkg").is_dir()

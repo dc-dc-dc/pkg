@@ -46,11 +46,25 @@ class GoTool(BuildTool):
         build_dir = self.project_dir / "build"
         build_dir.mkdir(exist_ok=True)
 
-        output = build_dir / self.project_dir.name
-        return run_command(
-            ["go", "build", "-o", str(output), "./cmd/..."],
-            cwd=self.project_dir,
-        )
+        cmd_dir = self.project_dir / "cmd"
+        entrypoints = sorted(
+            d for d in cmd_dir.iterdir() if d.is_dir()
+        ) if cmd_dir.is_dir() else []
+
+        if not entrypoints:
+            console.print("[red]Build aborted: no entrypoints found in cmd/[/red]")
+            return 1
+
+        for entry in entrypoints:
+            output = build_dir / entry.name
+            code = run_command(
+                ["go", "build", "-o", str(output), f"./cmd/{entry.name}"],
+                cwd=self.project_dir,
+            )
+            if code != 0:
+                return code
+
+        return 0
 
     def test(self) -> int:
         return run_command(["go", "test", "-cover", "./..."], cwd=self.project_dir)
@@ -102,7 +116,10 @@ class GoTool(BuildTool):
         console.print("[green]Created cmd/, pkg/, internal/, scripts/[/green]")
 
     def _create_main_go(self) -> None:
-        main_go = self.project_dir / "cmd" / "main.go"
+        entry_dir = self.project_dir / "cmd" / self.project_dir.name
+        entry_dir.mkdir(parents=True, exist_ok=True)
+
+        main_go = entry_dir / "main.go"
         if main_go.exists():
             return
 
@@ -114,7 +131,7 @@ func main() {
 \tfmt.Println("Hello, World!")
 }
 """)
-        console.print("[green]Created cmd/main.go[/green]")
+        console.print(f"[green]Created cmd/{self.project_dir.name}/main.go[/green]")
 
     def _create_gitignore(self) -> None:
         gitignore_content = """build/
