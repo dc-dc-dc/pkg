@@ -1,10 +1,13 @@
 import shutil
+import subprocess
 from pathlib import Path
 
 from rich.console import Console
 
 from .base import BuildTool
 from ..runner import run_command
+
+COVERAGE_THRESHOLD = 80.0
 
 console = Console()
 
