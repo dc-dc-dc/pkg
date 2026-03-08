@@ -1,3 +1,4 @@
+import re
 import shutil
 from pathlib import Path
 
@@ -43,7 +44,30 @@ class UvTool(BuildTool):
         return self.test()
 
     def test(self) -> int:
-        return run_command(["uv", "run", "pytest"], cwd=self.project_dir)
+        test_cfg = self.config.test if self.config else None
+        exclude = test_cfg.exclude if test_cfg else []
+        skip = test_cfg.skip if test_cfg else None
+
+        cmd = ["uv", "run", "pytest"]
+
+        if exclude:
+            all_paths = [
+                p for p in self.project_dir.rglob("*")
+                if p.suffix in (".py",) and p.name.startswith("test_") or
+                p.suffix in (".py",) and p.stem.endswith("_test")
+            ]
+            ignored = {
+                str(p.parent.relative_to(self.project_dir))
+                for p in all_paths
+                if any(re.search(excl, str(p.relative_to(self.project_dir))) for excl in exclude)
+            }
+            for path in ignored:
+                cmd += ["--ignore", path]
+
+        if skip:
+            cmd += ["-k", f"not ({skip})"]
+
+        return run_command(cmd, cwd=self.project_dir)
 
     def install(self) -> int:
         return run_command(["uv", "sync", "--group", "dev"], cwd=self.project_dir)
