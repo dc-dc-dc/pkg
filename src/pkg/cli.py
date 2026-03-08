@@ -19,7 +19,7 @@ class PkgContext:
     def __init__(self):
         self.project_dir = find_project_root()
         self.config = Config.load(self.project_dir)
-        self.tool = get_tool(self.config.tool)(self.project_dir)
+        self.tool = get_tool(self.config.tool)(self.project_dir, self.config)
         self.plugin_manager = PluginManager()
         self.plugin_manager.load_plugins(self.config.plugins, self.config)
 

@@ -1,10 +1,15 @@
 from abc import ABC, abstractmethod
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ..config import Config
 
 
 class BuildTool(ABC):
-    def __init__(self, project_dir: Path):
+    def __init__(self, project_dir: Path, config: "Config | None" = None):
         self.project_dir = project_dir
+        self.config = config
 
     @property
     @abstractmethod

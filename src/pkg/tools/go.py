@@ -1,3 +1,4 @@
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -33,6 +34,8 @@ class GoTool(BuildTool):
         self._create_dirs()
         self._create_main_go()
         self._create_gitignore()
+        self._create_dockerfile()
+        self._create_dockerignore()
         return 0
 
     def build(self) -> int:
@@ -70,7 +73,35 @@ class GoTool(BuildTool):
         return 0
 
     def test(self) -> int:
-        return run_command(["go", "test", "-cover", "./..."], cwd=self.project_dir)
+        test_cfg = self.config.test if self.config else None
+        exclude = test_cfg.exclude if test_cfg else []
+        skip = test_cfg.skip if test_cfg else None
+
+        if exclude:
+            result = subprocess.run(
+                ["go", "list", "./..."],
+                capture_output=True,
+                text=True,
+                cwd=self.project_dir,
+            )
+            if result.returncode != 0:
+                console.print("[red]Failed to list packages[/red]")
+                return result.returncode
+            packages = [
+                p for p in result.stdout.strip().splitlines()
+                if not any(re.search(excl, p) for excl in exclude)
+            ]
+            if not packages:
+                console.print("[yellow]No packages to test after exclusions[/yellow]")
+                return 0
+        else:
+            packages = ["./..."]
+
+        cmd = ["go", "test", "-cover"] + packages
+        if skip:
+            cmd += ["-skip", skip]
+
+        return run_command(cmd, cwd=self.project_dir)
 
     def install(self) -> int:
         return run_command(["go", "mod", "tidy"], cwd=self.project_dir)
@@ -154,3 +185,55 @@ coverage.out
         if not gitignore_path.exists():
             gitignore_path.write_text(gitignore_content)
             console.print("[green]Created .gitignore[/green]")
+
+    def _create_dockerfile(self) -> None:
+        app_name = self.project_dir.name
+        dockerfile_content = f"""# syntax=docker/dockerfile:1
+
+# Stage 1: Build
+FROM golang:1.24-alpine AS builder
+
+WORKDIR /app
+
+# Download dependencies first for better layer caching
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Copy source code and build the static binary
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux go build \\
+    -ldflags="-w -s" \\
+    -o /app/build/{app_name} \\
+    ./cmd/{app_name}
+
+# Stage 2: Runtime — minimal distroless image, non-root user
+FROM gcr.io/distroless/static-debian12:nonroot
+
+COPY --from=builder /app/build/{app_name} /bin/{app_name}
+
+USER nonroot:nonroot
+
+ENTRYPOINT ["/bin/{app_name}"]
+"""
+        dockerfile_path = self.project_dir / "Dockerfile"
+        if not dockerfile_path.exists():
+            dockerfile_path.write_text(dockerfile_content)
+            console.print("[green]Created Dockerfile[/green]")
+
+    def _create_dockerignore(self) -> None:
+        dockerignore_content = """.git/
+.gitignore
+build/
+vendor/
+coverage.out
+*.test
+*.exe
+README.md
+.env
+.env.*
+.DS_Store
+"""
+        dockerignore_path = self.project_dir / ".dockerignore"
+        if not dockerignore_path.exists():
+            dockerignore_path.write_text(dockerignore_content)
+            console.print("[green]Created .dockerignore[/green]")

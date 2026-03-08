@@ -1,3 +1,4 @@
+import re
 import shutil
 from pathlib import Path
 
@@ -42,7 +43,35 @@ class BunTool(BuildTool):
         return run_command(["bun", "run", "build"], cwd=self.project_dir)
 
     def test(self) -> int:
-        return run_command(["bun", "test", "--coverage"], cwd=self.project_dir)
+        test_cfg = self.config.test if self.config else None
+        exclude = test_cfg.exclude if test_cfg else []
+        skip = test_cfg.skip if test_cfg else None
+
+        cmd = ["bun", "test", "--coverage"]
+
+        if exclude:
+            patterns = ["**/*.test.ts", "**/*.test.tsx", "**/*.test.js", "**/*.test.jsx",
+                        "**/*.spec.ts", "**/*.spec.tsx", "**/*.spec.js", "**/*.spec.jsx"]
+            test_files = []
+            for pattern in patterns:
+                for path in self.project_dir.glob(pattern):
+                    if "node_modules" not in path.parts:
+                        test_files.append(path)
+
+            filtered = [
+                str(p.relative_to(self.project_dir))
+                for p in test_files
+                if not any(re.search(excl, str(p)) for excl in exclude)
+            ]
+            if not filtered:
+                console.print("[yellow]No test files to run after exclusions[/yellow]")
+                return 0
+            cmd += filtered
+
+        if skip:
+            console.print("[yellow]test.skip is not supported by bun — use test.exclude for file exclusions[/yellow]")
+
+        return run_command(cmd, cwd=self.project_dir)
 
     def install(self) -> int:
         return run_command(["bun", "install"], cwd=self.project_dir)

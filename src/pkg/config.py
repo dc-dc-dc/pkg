@@ -12,10 +12,17 @@ class HookConfig:
 
 
 @dataclass
+class TestConfig:
+    exclude: list[str] = field(default_factory=list)
+    skip: str | None = None
+
+
+@dataclass
 class Config:
     tool: str = "uv"
     hooks: dict[str, HookConfig] = field(default_factory=dict)
     plugins: list[str] = field(default_factory=list)
+    test: TestConfig = field(default_factory=TestConfig)
 
     @classmethod
     def load(cls, project_dir: Path) -> "Config":
@@ -29,6 +36,7 @@ class Config:
         pkg_config = data.get("pkg", {})
         hooks_data = data.get("hooks", {})
         plugins_data = data.get("plugins", {})
+        test_data = data.get("test", {})
 
         hooks = {}
         for command, hook_data in hooks_data.items():
@@ -37,10 +45,16 @@ class Config:
                 post=hook_data.get("post", []),
             )
 
+        test_config = TestConfig(
+            exclude=test_data.get("exclude", []),
+            skip=test_data.get("skip", None),
+        )
+
         return cls(
             tool=pkg_config.get("tool", "uv"),
             hooks=hooks,
             plugins=plugins_data.get("enabled", []),
+            test=test_config,
         )
 
     def get_hooks(self, command: str) -> HookConfig:

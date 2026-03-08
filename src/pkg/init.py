@@ -9,6 +9,10 @@ console = Console()
 DEFAULT_CONFIG = '''[pkg]
 tool = "uv"
 
+[test]
+exclude = []
+# skip = "TestIntegration|TestSlow"
+
 [hooks.build]
 pre = []
 post = []
